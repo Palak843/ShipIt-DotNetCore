@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
  using Microsoft.AspNetCore.Mvc;
@@ -12,7 +12,7 @@ namespace ShipIt.Controllers
     public class OutboundOrderController : ControllerBase
     {
         private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod()?.DeclaringType);
-
+        private const double TRUCK_CAPACITY_KG = 2000;
         private readonly IStockRepository _stockRepository;
         private readonly IProductRepository _productRepository;
 
@@ -23,7 +23,7 @@ namespace ShipIt.Controllers
         }
 
         [HttpPost("")]
-        public void Post([FromBody] OutboundOrderRequestModel request)
+        public OutboundOrderResponse Post([FromBody] OutboundOrderRequestModel request)
         {
             Log.Info(String.Format("Processing outbound order: {0}", request));
 
@@ -94,6 +94,19 @@ namespace ShipIt.Controllers
             }
 
             _stockRepository.RemoveStock(request.WarehouseId, lineItems);
+
+            double totalWeight = 0;
+
+            foreach (OrderLine orderLine in request.OrderLines)
+            {
+                double productWeight = products[orderLine.gtin].Weight;
+                totalWeight = totalWeight + productWeight * orderLine.quantity;
+        
+            }
+            return new OutboundOrderResponse
+            {
+                RequiredTrucks = Convert.ToInt32(Math.Ceiling(totalWeight/ TRUCK_CAPACITY_KG))
+            };
         }
     }
 }
